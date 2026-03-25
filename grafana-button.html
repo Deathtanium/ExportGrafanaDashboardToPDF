@@ -271,10 +271,12 @@
         console.log("[GFEXP] Bouton d'exportation cliqué");
 
         setTimeout(() => {
+            console.log("[GFEXP][DEBUG] Export menu click detected, probing marker and dropdown...");
 
             const marker = document.getElementById('GFEXP_marker');
             if (!marker) {
                 console.log("GFEXP_marker not found !");
+                console.warn("[GFEXP][DEBUG] Marker missing, cannot initialize export drawer state.");
                 return;
             }
             const gfexpStatus = marker.getAttribute('data-gfexp-server-status');
@@ -283,8 +285,10 @@
             const gfexpError = marker.getAttribute('data-gfexp-error');
 
             let exportDropdown = document.querySelector('div[data-testid*="new export button menu"]');
+            console.log("[GFEXP][DEBUG] Export dropdown found:", !!exportDropdown);
 
             if (exportDropdown && !document.querySelector('[data-testid="gfexp-export-as-pdf-button"]')) {
+                console.log("[GFEXP][DEBUG] Injecting custom PDF export menu item.");
 
                 let newButton = document.createElement('button');
                 newButton.className = "GFEXP_export_menu_button";
@@ -334,17 +338,26 @@
 
                 newButton.addEventListener('click', function () {
                     console.log("[GFEXP] Ouverture modale export PDF");
-                    let mainView = document.querySelector('div.main-view');
+                    console.log("[GFEXP][DEBUG] Opening custom PDF drawer...");
+                    let mainView = document.querySelector('div.main-view') || document.body;
                     if (!mainView) {
-                        console.error("[GFEXP] ❌ mainView introuvable !");
+                        console.error("[GFEXP] ❌ Aucun conteneur de montage trouvé !");
                         return;
                     }
 
-                    if (document.querySelector('.custom-export-drawer')) return;
+                    const existingDrawer = document.querySelector('.custom-export-drawer');
+                    if (existingDrawer) {
+                        console.log("[GFEXP] Drawer existant détecté, remplacement...");
+                        console.log("[GFEXP][DEBUG] Removing stale drawer instance before creating a new one.");
+                        existingDrawer.remove();
+                    }
 
                     let drawer = document.createElement('div');
                     drawer.className = "rc-drawer rc-drawer-right GFEXP_drawer rc-drawer-open custom-export-drawer";
                     drawer.tabIndex = -1;
+                    drawer.style.position = "fixed";
+                    drawer.style.inset = "0";
+                    drawer.style.zIndex = "2000";
 
                     let drawerMask = document.createElement('div');
                     drawerMask.className = "rc-drawer-mask GFEXP_drawer_mask";
@@ -353,6 +366,10 @@
                     let drawerContent = document.createElement('div');
                     drawerContent.className = "rc-drawer-content-wrapper GFEXP_drawer_content_wrapper";
                     drawerContent.style.width = "50vw";
+                    drawerContent.style.position = "absolute";
+                    drawerContent.style.top = "0";
+                    drawerContent.style.right = "0";
+                    drawerContent.style.bottom = "0";
 
                     let drawerInner = document.createElement('div');
                     drawerInner.className = "rc-drawer-content GFEXP_drawer_content";
@@ -868,6 +885,8 @@
                     drawerContent.appendChild(drawerInner);
                     drawer.appendChild(drawerContent);
                     mainView.appendChild(drawer);
+                    console.log("[GFEXP] Drawer monté dans:", mainView === document.body ? "document.body" : "div.main-view");
+                    console.log("[GFEXP][DEBUG] Drawer node appended successfully.");
 
                     drawer.querySelectorAll('.close-drawer').forEach(btn => {
                         btn.addEventListener('click', () => {
@@ -879,7 +898,12 @@
                     });
 
                     let gfexpDownloadPdfButton = drawer.querySelector('button.GFEXP_generatePdf');
+                    if (!gfexpDownloadPdfButton) {
+                        console.error('[GFEXP] ❌ Bouton de génération introuvable dans le drawer.');
+                        return;
+                    }
                     gfexpDownloadPdfButton.addEventListener('click', async () => {
+                        console.log('[GFEXP][DEBUG] Generate PDF button clicked.');
                         marker.setAttribute('data-gfexp-waiting', 'true')
                         marker.removeAttribute('data-gfexp-error');
                         marker.removeAttribute('data-gfexp-pdf-url');
@@ -1014,6 +1038,11 @@
                     });
                 });
                 exportDropdown.insertAdjacentElement('beforeend', newButton);
+                console.log("[GFEXP][DEBUG] Custom PDF export menu item inserted.");
+            } else if (!exportDropdown) {
+                console.warn("[GFEXP][DEBUG] Export dropdown not found (timing or Grafana selector mismatch).");
+            } else {
+                console.log("[GFEXP][DEBUG] Custom PDF export menu item already present.");
             }
         }, 50);
     });
